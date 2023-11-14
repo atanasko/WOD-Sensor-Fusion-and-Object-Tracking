@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 from PIL import Image
 from io import BytesIO
+import tensorflow as tf
 import utils.wod_reader as wod_reader
 import utils.pcl_util as pcl_util
 import utils.visualizer as visualizer
@@ -64,7 +65,7 @@ if __name__ == '__main__':
     dataset_dir = args.dataset_root_dir + "/data/testing"
     context_names = [os.path.splitext(os.path.basename(name))[0] for name in glob.glob(dataset_dir + "/lidar/*.*")]
 
-    context_name = context_names[10]
+    context_name = context_names[12]
 
     # Loop over all the scenes dataframes?
     # Read camera calibration
@@ -85,6 +86,8 @@ if __name__ == '__main__':
     Camera.c_j = float(c_j)
 
     Camera.sens_to_vehicle = np.asmatrix(camera_calibration.extrinsic.transform[0].reshape(4, 4))
+    # Camera.sens_to_vehicle = np.asmatrix(camera_calibration.extrinsic.transform[0].reshape(4, 4))
+    Camera.sens_to_vehicle = np.asmatrix(tf.reshape(tf.constant(list(camera_calibration.extrinsic.transform[0]), dtype=tf.float32), [4, 4]).numpy())
     Camera.veh_to_sens = np.linalg.inv(Camera.sens_to_vehicle)
 
     EKF = EKF()
@@ -121,26 +124,30 @@ if __name__ == '__main__':
         bev_img = cv2.rotate(bev_img, cv2.ROTATE_90_COUNTERCLOCKWISE)
         img = Image.fromarray(bev_img).convert('RGB')
 
-        # visualizer.vis_cam_img(img, tracker.track_list, Camera.veh_to_sens)
 
         lidar_detections = bev_model.predict(img)  # results list
-        for box in lidar_detections[0].boxes.xywh:
-            z = [float(box[0]), float(box[1]), 1.5, float(box[2]), float(box[3]), 1.5, 0]
-            ratio_x = (cfg.range_x[1] - cfg.range_x[0]) / cfg.bev_width
-            z[0] = z[0] * ratio_x
-            z[1] = (- z[1] + cfg.bev_height / 2) * ratio_x
-            meas = LidarMeasurement(z)
-            lidar_meas_list.append(meas)
+        visualizer.vis_bev_image(bev_img, lidar_detections[0].boxes)
+        for box, cls in zip(lidar_detections[0].boxes.xywh, lidar_detections[0].boxes.cls):
+            if float(cls) == 1:
+                z = [float(box[0]), float(box[1]), 1, float(box[2]), float(box[3]), 1.5, 0]
+                ratio_x = (cfg.range_x[1] - cfg.range_x[0]) / cfg.bev_width
+                z[0] *= ratio_x
+                z[1] = (- z[1] + cfg.bev_height / 2) * ratio_x
+                z[3] *= ratio_x
+                z[4] *= ratio_x
+                meas = LidarMeasurement(z)
+                lidar_meas_list.append(meas)
 
         # ########## CAMERA detect ##########
         cam = v2.CameraImageComponent.from_dict(r)
         cam_calibration = v2.CameraCalibrationComponent.from_dict(r)
         img = Image.open(BytesIO(cam.image))
         camera_detections = yolo_model.predict(img)  # results list
-        for box in camera_detections[0].boxes.xywh:
-            z = [float(box[0]), float(box[1]), 0, float(box[2]), float(box[3]), 1.5, 0]
-            meas = CameraMeasurement(z)
-            cam_meas_list.append(meas)
+        for box, cls in zip(camera_detections[0].boxes.xywh, lidar_detections[0].boxes.cls):
+            if float(cls) == 1:
+                z = [float(box[0]), float(box[1]), 0, 0, 0, 0, 0]
+                meas = CameraMeasurement(z)
+                cam_meas_list.append(meas)
 
         # ########## PREDICT ##########
         for track in tracker.track_list:
@@ -158,6 +165,7 @@ if __name__ == '__main__':
             # ########## PROCESS UNASSIGNED MEASUREMENTS ##########
             # only initialize with lidar measurements
             tracker.process_unassigned_meas(lidar_meas_list, association.unassigned_meas)
+            association.unassigned_meas.clear()
 
         if cam_meas_list:
             # ########## UPDATE CAMERA ##########
@@ -174,5 +182,7 @@ if __name__ == '__main__':
         # im_array = camera_detections[0].plot()  # plot a BGR numpy array of predictions
         # im = Image.fromarray(im_array[..., ::-1])  # RGB PIL image
         # im.show()  # show image
+
+        visualizer.vis_bev_image_1(bev_img, lidar_detections[0].boxes)
 
         visualizer.vis_cam_img(img, tracker.track_list, Camera())

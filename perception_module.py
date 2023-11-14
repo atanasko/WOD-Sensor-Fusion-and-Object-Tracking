@@ -27,7 +27,7 @@ class Sensor:
 
         theta = np.arctan(pos_sens[1] / pos_sens[0])
 
-        return self.fov[0] < float(theta) < self.fov[0]
+        return self.fov[0] < float(theta) < self.fov[1]
 
 
 class Lidar(Sensor):
@@ -44,7 +44,7 @@ class Lidar(Sensor):
         self.fov = [-np.pi / 2, np.pi / 2]
 
     def get_hx(self, x):
-        pos_veh = np.once((4, 1))
+        pos_veh = np.ones((4, 1))
         pos_veh[0:3] = x[0:3]
         pos_sens = self.veh_to_sens * pos_veh
 
@@ -138,7 +138,7 @@ class LidarMeasurement(Measurement):
 
         self.z = np.zeros((self.sensor.dimm, 1))
         self.z[0] = z[0]
-        self.z[1] = - z[1]
+        self.z[1] = z[1]
         self.z[2] = z[2]
 
         sigma_lidar_x = params.sigma_lidar_x
@@ -148,9 +148,9 @@ class LidarMeasurement(Measurement):
                             [0, sigma_lidar_y ** 2, 0],
                             [0, 0, sigma_lidar_z ** 2]])
 
-        self.width = z[4]
-        self.length = z[5]
-        self.height = z[3]
+        self.width = z[3]
+        self.length = z[4]
+        self.height = z[5]
         self.yaw = z[6]
 
 
@@ -206,14 +206,15 @@ class EKF:
         track.set_P(P)
 
     def update(self, track, meas):
-        Hj = meas.get_H(track.x)
+        Hj = meas.sensor.get_H(track.x)
         gamma = meas.z - meas.sensor.get_hx(track.x)
         S = Hj * track.P * Hj.transpose() + meas.R
         K = track.P * Hj.transpose() * np.linalg.inv(S)
 
         x = track.x + K * gamma
-        I = np.identity(self.dimm)
+        # I = np.identity(meas.sensor.dimm)
+        I = np.identity(6)
         P = (I - K * Hj) * track.P
 
-        track.set(x)
+        track.set_x(x)
         track.set_P(P)

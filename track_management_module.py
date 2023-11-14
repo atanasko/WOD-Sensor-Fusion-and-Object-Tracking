@@ -75,7 +75,7 @@ class Tracker:
         self.track_list = []
 
     def init_track(self, meas):
-        last_id = self.track_list[len(self.track_list) - 1].id if len(self.track_list) > 0 else 0
+        last_id = self.track_list[len(self.track_list) - 1].id if len(self.track_list) > 0 else -1
         track = Track(last_id + 1, meas)
         self.track_list.append(track)
 
@@ -86,7 +86,7 @@ class Tracker:
                       or (track.P[0, 0] > params.max_P or track.P[1, 1] > params.max_P)))
                     or ((track.state == State.CONFIRMED)
                         and (track.score < params.delete_confirmed_threshold
-                             or (track.P[0, 0] > params.max_P or track[1, 1] > params.max_P)))):
+                             or (track.P[0, 0] > params.max_P or track.P[1, 1] > params.max_P)))):
                 self.track_list.remove(track)
 
     def update_unassigned_tracks(self, unassigned_tracks, sensor):
