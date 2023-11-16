@@ -126,13 +126,14 @@ if __name__ == '__main__':
 
 
         lidar_detections = bev_model.predict(img)  # results list
-        visualizer.vis_bev_image(bev_img, lidar_detections[0].boxes)
+        # visualizer.vis_bev_image(bev_img, lidar_detections[0].boxes)
         for box, cls in zip(lidar_detections[0].boxes.xywh, lidar_detections[0].boxes.cls):
             if float(cls) == 1:
-                z = [float(box[0]), float(box[1]), 1, float(box[2]), float(box[3]), 1.5, 0]
+                z = [float(box[0]), float(box[1]), 1, float(box[2]), float(box[3]), 1, 0]
                 ratio_x = (cfg.range_x[1] - cfg.range_x[0]) / cfg.bev_width
+                ratio_y = (cfg.range_y[1] - cfg.range_y[0]) / cfg.bev_height
                 z[0] *= ratio_x
-                z[1] = (- z[1] + cfg.bev_height / 2) * ratio_x
+                z[1] = (- z[1] + cfg.bev_height / 2) * ratio_y
                 z[3] *= ratio_x
                 z[4] *= ratio_x
                 meas = LidarMeasurement(z)
@@ -183,6 +184,6 @@ if __name__ == '__main__':
         # im = Image.fromarray(im_array[..., ::-1])  # RGB PIL image
         # im.show()  # show image
 
-        visualizer.vis_bev_image_1(bev_img, lidar_detections[0].boxes)
+        # visualizer.vis_bev_image_1(bev_img, lidar_detections[0].boxes)
 
         visualizer.vis_cam_img(img, tracker.track_list, Camera())

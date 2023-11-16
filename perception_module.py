@@ -88,7 +88,7 @@ class Camera(Sensor):
         pos_sens = self.veh_to_sens * pos_veh  # transform from vehicle to camera coordinates
 
         hx[0, 0] = self.c_i - self.f_i * (pos_sens[1] / pos_sens[0])
-        hx[1, 0] = self.c_i - self.f_i * (pos_sens[2] / pos_sens[0])
+        hx[1, 0] = self.c_j - self.f_j * (pos_sens[2] / pos_sens[0])
 
         return hx
 
