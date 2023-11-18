@@ -98,6 +98,7 @@ if __name__ == '__main__':
     cam_meas_list = []
 
     lidar_df = wod_reader.read_lidar_df(dataset_dir, context_name, laser_name)
+    # lidar_lidar_box_df = wod_reader.read_lidar_lidar_box_df(dataset_dir, context_name, laser_name)
     lidar_calibration_df = wod_reader.read_lidar_calibration_df(dataset_dir, context_name, laser_name)
     lidar_pose_df = wod_reader.read_lidar_pose_df(dataset_dir, context_name, laser_name)
     cam_img_df = wod_reader.read_cam_img_df(dataset_dir, context_name, laser_name)
@@ -106,6 +107,7 @@ if __name__ == '__main__':
 
     df = lidar_df[lidar_df['key.laser_name'] == laser_name]
     df = v2.merge(df, lidar_calibration_df)
+    # df = lidar_lidar_box_df.merge(lidar_calibration_df)
     df = v2.merge(df, lidar_pose_df)
     df = v2.merge(df, cam_img_df[cam_img_df['key.camera_name'] == camera_name])
     df = v2.merge(df, camera_calibration_df)
@@ -114,6 +116,7 @@ if __name__ == '__main__':
     for i, (_, r) in enumerate(df.iterrows()):
         # ########## LIDAR detect ##########
         lidar = v2.LiDARComponent.from_dict(r)
+        # lidar_box = v2.LiDARBoxComponent.from_dict(r)
         lidar_calibration = v2.LiDARCalibrationComponent.from_dict(r)
         lidar_pose = v2.LiDARPoseComponent.from_dict(r)
         vehicle_pose = v2.VehiclePoseComponent.from_dict(r)
@@ -124,12 +127,11 @@ if __name__ == '__main__':
         bev_img = cv2.rotate(bev_img, cv2.ROTATE_90_COUNTERCLOCKWISE)
         img = Image.fromarray(bev_img).convert('RGB')
 
-
         lidar_detections = bev_model.predict(img)  # results list
         # visualizer.vis_bev_image(bev_img, lidar_detections[0].boxes)
         for box, cls in zip(lidar_detections[0].boxes.xywh, lidar_detections[0].boxes.cls):
             if float(cls) == 1:
-                z = [float(box[0]), float(box[1]), 1, float(box[2]), float(box[3]), 1, 0]
+                z = [float(box[0]), float(box[1]), 1.5, float(box[2]), float(box[3]), 1.5, 0]
                 ratio_x = (cfg.range_x[1] - cfg.range_x[0]) / cfg.bev_width
                 ratio_y = (cfg.range_y[1] - cfg.range_y[0]) / cfg.bev_height
                 z[0] *= ratio_x

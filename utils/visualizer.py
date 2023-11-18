@@ -21,8 +21,9 @@ def vis_cam_img(img, track_list, camera):
         # Draw the object bounding box.
         i = xi[0]
         j = xi[1]
-        size_x = 20
-        size_y = 20
+
+        size_x = track.length * 1920 / 50 * 2
+        size_y = track.width * 1280 / 50 * 2
         ax.add_patch(patches.Rectangle(
             xy=(i, j),
             width=size_x,
